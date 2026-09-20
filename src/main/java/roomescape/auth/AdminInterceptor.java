@@ -5,29 +5,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import roomescape.member.LoginMember;
-import roomescape.member.MemberService;
 
 @Component
 public class AdminInterceptor implements HandlerInterceptor {
-    private final CookieTokenExtractor cookieTokenExtractor;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final MemberService memberService;
+    private final LoginMemberProvider loginMemberProvider;
 
-    public AdminInterceptor(CookieTokenExtractor cookieTokenExtractor, JwtTokenProvider jwtTokenProvider,
-                            MemberService memberService) {
-        this.cookieTokenExtractor = cookieTokenExtractor;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.memberService = memberService;
+    public AdminInterceptor(LoginMemberProvider loginMemberProvider) {
+        this.loginMemberProvider = loginMemberProvider;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String token = cookieTokenExtractor.extract(request.getCookies());
-        String email = jwtTokenProvider.getPayload(token);
-        LoginMember member = memberService.findLoginMemberByEmail(email);
+        LoginMember member = loginMemberProvider.getLoginMember(request);
 
         if (!member.getRole().equals("ADMIN")) {
-            response.setStatus(401);
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return false;
         }
 
