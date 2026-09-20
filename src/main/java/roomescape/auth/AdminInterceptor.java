@@ -26,7 +26,7 @@ public class AdminInterceptor implements HandlerInterceptor {
         String email = jwtTokenProvider.getPayload(token);
         LoginMember member = memberService.findLoginMemberByEmail(email);
 
-        if (member == null || !member.getRole().equals("ADMIN")) {
+        if (!member.getRole().equals("ADMIN")) {
             response.setStatus(401);
             return false;
         }
