@@ -1,5 +1,6 @@
 package roomescape.reservation;
 
+import roomescape.auth.AdminOnly;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -21,6 +22,7 @@ public class ReservationController {
         this.reservationService = reservationService;
     }
 
+    @AdminOnly
     @GetMapping("/reservations")
     public List<ReservationResponse> list() {
         return reservationService.findAll();
@@ -33,6 +35,7 @@ public class ReservationController {
         return ResponseEntity.created(URI.create("/reservations/" + reservation.getId())).body(reservation);
     }
 
+    @AdminOnly
     @DeleteMapping("/reservations/{id}")
     public ResponseEntity delete(@PathVariable Long id) {
         reservationService.deleteById(id);

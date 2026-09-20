@@ -18,15 +18,17 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 ### 관리자 권한 검사 설정
 
 - [x] `addInterceptors()`에 `AdminInterceptor`를 등록한다.
-- [x] `/admin`, `/admin/**` 요청에 관리자 권한 검사를 적용한다.
+- [x] Interceptor를 전체 경로에 등록하고, `@AdminOnly`가 붙은 컨트롤러 메서드에만 관리자 권한 검사를 적용한다.
 
 ---
 
 ## `AdminInterceptor`
 
-### 관리자 페이지 접근 제한
+### 관리자 페이지 및 API 접근 제한
 
-- [x] `HandlerInterceptor`를 구현해 컨트롤러 실행 전에 권한을 검사한다.
+- [x] `handler`가 `HandlerMethod`이고 메서드에 `@AdminOnly`가 있는지 먼저 확인한다.
+- [x] 보호 대상인 경우에만 로그인 회원을 조회하고 관리자 권한을 검사한다.
+- [x] 표시가 없는 메서드와 정적 리소스는 관리자 인증 없이 다음 처리로 진행한다.
 - [x] `LoginMemberProvider`에 쿠키 추출·토큰 검증·로그인 회원 조회를 위임하고, 반환된 회원의 `role`을 확인한다.
 - [x] 인증된 회원의 `role`이 `ADMIN`이 아니면 `403 Forbidden`을 설정하고 `false`를 반환한다.
 - [x] 관리자이면 `true`를 반환해 컨트롤러 실행을 허용한다.
@@ -317,14 +319,25 @@ Cookie: token=<발급된 JWT>
 }
 ```
 
-### 관리자 페이지 및 실패 응답
+### 관리자 페이지·API 및 실패 응답
 
-관리자 권한 검사는 `/admin`, `/admin/**`에 적용한다. 예약·테마·시간 API에는 별도의 관리자 권한 제한이 없다.
+관리자 페이지와 관리 API의 메서드에 `@AdminOnly`를 붙여 보호한다.
+
+| 관리자 전용 요청 | 기능 |
+| --- | --- |
+| `GET /admin`, `/admin/reservation`, `/admin/theme`, `/admin/time` | 관리자 화면 |
+| `POST /themes`, `DELETE /themes/{id}` | 테마 생성·삭제 |
+| `POST /times`, `DELETE /times/{id}` | 시간 생성·삭제 |
+| `GET /reservations`, `DELETE /reservations/{id}` | 전체 예약 조회·삭제 |
+
+`GET /themes`, `GET /times`, `GET /available-times`는 공개 조회를 유지한다.
+`POST /reservations`는 일반 회원도 사용할 수 있으며, 기존 Resolver가 로그인 여부를 확인한다.
+`@AdminOnly`는 런타임에 확인하는 메서드 전용 표시다. 새 관리자 전용 메서드에도 표시해야 보호된다.
 
 | 요청 상황 | 응답 |
 | --- | --- |
 | `ADMIN` 회원이 관리자 페이지에 접근 | `200 OK` |
-| 인증된 일반 회원이 관리자 페이지에 접근 | `403 Forbidden` |
+| 인증된 일반 회원이 관리자 페이지 또는 관리자 API에 접근 | `403 Forbidden` |
 | 인증이 필요한 요청에서 쿠키 누락 또는 유효하지 않은 토큰 사용 | `401 Unauthorized` |
 | 토큰의 이메일에 해당하는 회원이 없음 | `401 Unauthorized` |
 | 로그인 이메일·비밀번호 불일치 | `400 Bad Request` |
