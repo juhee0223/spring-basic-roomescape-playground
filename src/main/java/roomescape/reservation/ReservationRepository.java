@@ -8,6 +8,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @EntityGraph(attributePaths = {"member", "time", "theme"})
     List<Reservation> findAllByOrderByIdAsc();
 
+    @EntityGraph(attributePaths = {"time", "theme"})
+    List<Reservation> findByMemberIdOrderByIdAsc(Long memberId);
+
     @EntityGraph(attributePaths = {"member", "time", "theme"})
     List<Reservation> findByDateAndThemeId(String date, Long themeId);
 }
