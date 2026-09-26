@@ -1,0 +1,13 @@
+package roomescape.reservation;
+
+import java.util.List;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    @EntityGraph(attributePaths = {"member", "time", "theme"})
+    List<Reservation> findAllByOrderByIdAsc();
+
+    @EntityGraph(attributePaths = {"member", "time", "theme"})
+    List<Reservation> findByDateAndThemeId(String date, Long themeId);
+}

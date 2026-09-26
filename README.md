@@ -1,7 +1,8 @@
 # spring-basic-roomescape-playground
 
-Spring MVC 인증 미션의 1~3단계를 구현한 방탈출 예약 관리 프로젝트입니다.
-JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 페이지 접근 제한을 제공합니다.
+Spring MVC 인증 및 JPA 전환 미션의 1~4단계를 구현한 방탈출 예약 관리 프로젝트입니다.
+JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 페이지·API 접근 제한과 JPA 기반 데이터 저장·조회를 제공합니다.
+
 
 ## 클래스별 구현 기능 목록
 
@@ -70,9 +71,7 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 
 - [x] `HandlerMethodArgumentResolver`를 구현한다.
 - [x] 컨트롤러 매개변수의 타입이 `LoginMember`인 경우 동작한다.
-- [x] `CookieTokenExtractor`로 토큰을 추출한다.
-- [x] `JwtTokenProvider`로 토큰을 검증하고 이메일을 추출한다.
-- [x] `MemberService.findLoginMemberByEmail()`로 로그인 회원 정보를 조회한다.
+- [x] `LoginMemberProvider`에 쿠키 추출·토큰 검증·로그인 회원 조회를 위임한다.
 - [x] 조회한 `LoginMember`를 컨트롤러 메서드의 인자로 전달한다.
 
 ---
@@ -110,7 +109,7 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 ### 회원 생성 및 로그인 인증
 
 - [x] 가입한 회원의 권한을 `USER`로 지정해 저장한다.
-- [x] 이메일과 비밀번호가 일치하는 회원을 `MemberDao`에서 조회한다.
+- [x] 이메일과 비밀번호가 일치하는 회원을 `MemberRepository`에서 조회한다.
 
 ### 로그인 회원 정보 조회
 
@@ -120,15 +119,15 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 
 ---
 
-## `MemberDao`
+## `MemberRepository`
 
 ### 회원 저장 및 조회
 
-- [x] `JdbcTemplate`으로 회원 정보를 저장하고 생성된 ID를 조회한다.
+- [x] `JpaRepository<Member, Long>`의 `save()`로 회원을 저장하고 DB가 생성한 ID를 사용한다.
 - [x] `findByEmailAndPassword()`로 로그인할 회원을 조회한다.
 - [x] `findByEmail()`로 토큰의 이메일에 해당하는 회원을 조회한다.
 - [x] `findByName()`으로 예약자 이름에 해당하는 회원을 조회한다.
-- [x] 조회한 `id`, `name`, `email`, `role`로 `Member` 객체를 생성한다.
+- [x] 조회 결과가 없으면 `Optional.empty()`를 반환하며, 서비스에서 상황에 맞는 예외로 변환한다.
 
 ---
 
@@ -173,28 +172,28 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 
 ### 예약자 결정 및 예약 생성
 
-- [x] 요청의 `name`이 생략되거나 `null`이면 `LoginMember`의 이름을 사용한다.
-- [x] `name`이 있으면 `MemberDao.findByName()`으로 회원을 조회해 그 이름을 사용한다.
-- [x] 원래 요청과 결정한 예약자 이름을 `ReservationDao.save()`에 전달한다.
+- [x] 요청의 `name`이 생략되거나 `null`이면 `LoginMember`의 ID로 회원을 조회한다.
+- [x] `name`이 있으면 `MemberRepository.findByName()`으로 회원을 조회한다.
+- [x] 회원·시간·테마 엔티티를 연결한 `Reservation`을 `save()`로 저장한다.
 - [x] 저장 결과를 `ReservationResponse`로 변환한다.
 
 빈 문자열은 이름 생략으로 처리하지 않는다. 이름을 지정할 때 별도의 관리자 권한 검사는 하지 않는다.
 
 ---
 
-## `ReservationDao`
+## `ReservationRepository`
 
 ### 예약 저장·조회·삭제
 
-- [x] 결정된 예약자 이름과 날짜, 테마 ID, 시간 ID를 DB에 저장한다.
-- [x] 생성된 ID와 테마·시간 정보를 조회해 저장한 예약을 반환한다.
-- [x] 예약 목록을 테마·시간 정보와 함께 조회한다.
+- [x] 예약 날짜와 회원·테마·시간의 외래 키를 저장한다.
+- [x] `@ManyToOne`으로 연결된 엔티티에서 예약자 이름·테마·시간을 읽는다.
+- [x] `@EntityGraph`로 예약 목록과 회원·테마·시간을 함께 조회한다.
 - [x] 날짜와 테마 ID에 해당하는 예약 목록을 조회한다.
 - [x] 예약 ID를 기준으로 삭제한다.
 
 ---
 
-## `ThemeController`, `ThemeDao`, `Theme`
+## `ThemeController`, `ThemeService`, `ThemeRepository`, `Theme`
 
 ### 테마 관리
 
@@ -202,17 +201,19 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 - [x] 테마 생성 시 `@Valid`로 요청 데이터를 검증한다.
 - [x] `name`에 `@NotBlank`, `description`에 `@NotNull`을 적용한다.
 - [x] 테마 설명은 빈 문자열을 허용한다.
+- [x] 삭제 시 `deleted=true`로 변경하고 목록에서 제외해 기존 예약의 참조를 보존한다.
 
 ---
 
-## `TimeController`, `TimeService`, `TimeDao`, `Time`, `AvailableTime`
+## `TimeController`, `TimeService`, `TimeRepository`, `Time`, `AvailableTime`
 
 ### 시간 관리 및 예약 여부 조회
 
 - [x] 시간을 생성하고 전체 목록을 조회하며 ID로 삭제한다.
 - [x] 시간 생성 시 `@Valid`로 검증하고 `value`에 `@NotBlank`를 적용한다.
 - [x] 날짜와 테마 ID를 기준으로 각 시간의 예약 여부를 확인한다.
-- [x] 전체 시간에 대해 `timeId`, `time`, `booked`를 응답한다.
+- [x] 삭제되지 않은 시간에 대해 `timeId`, `time`, `booked`를 응답한다.
+- [x] 시간 삭제도 논리 삭제로 처리해 기존 예약의 참조를 보존한다.
 
 ---
 
@@ -225,6 +226,15 @@ JWT와 쿠키를 이용한 로그인, 로그인 회원 정보 주입, 관리자 
 - [x] 필수값 검증 실패 등 공통 예외 처리기에 전달된 나머지 예외는 본문 없는 `400 Bad Request`로 응답한다.
 
 ---
+
+## JPA 저장 구조
+
+- `Member`, `Theme`, `Time`, `Reservation`을 엔티티로 매핑하고 ID는 `IDENTITY`로 생성한다.
+- 네 DAO를 `JpaRepository` 기반 Repository로 대체한다.
+- 서비스의 `@Transactional` 범위에서 저장·삭제 및 응답 DTO 변환을 수행한다.
+- 테마·시간은 변경 감지로 논리 삭제하고, 예약은 실제 삭제한다.
+- Hibernate가 테이블을 생성하고 `data.sql`이 초기 데이터를 넣는다. 학습용 H2 메모리 DB와 `create-drop` 설정이므로 데이터는 재시작하면 초기화된다.
+- `Time.getTime()`은 미션 예제의 Java 호출을 지원한다. `@JsonIgnore`로 기존 API의 `id`, `value` 응답을 유지한다.
 
 ## API 명세
 
@@ -309,7 +319,7 @@ Cookie: token=<발급된 JWT>
 | 시간별 예약 여부 조회 | GET | `/available-times` | 쿼리: `date`, `themeId` | `200`, 시간별 예약 여부 목록 |
 
 테마 응답은 `id`, `name`, `description`, 시간 응답은 `id`, `value`를 포함한다.
-`GET /available-times?date=2026-09-20&themeId=1`은 전체 시간을 반환하며 각 항목은 다음 형태이다.
+`GET /available-times?date=2026-09-20&themeId=1`은 삭제되지 않은 시간을 반환하며 각 항목은 다음 형태이다.
 
 ```json
 {
